@@ -1,6 +1,7 @@
 package com.proyectozoo.zoo.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Entity
@@ -12,6 +13,7 @@ public class Seccion {
     @Column(name = "id")
     private Long id;
     @Column(name = "nombre")
+    @NotBlank(message = "El nombre es obligatorio")
     private String nombre;
     @Column(name = "descripcion")
     private String descripcion;

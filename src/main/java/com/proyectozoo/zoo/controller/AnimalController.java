@@ -1,15 +1,18 @@
 package com.proyectozoo.zoo.controller;
 
+import com.proyectozoo.zoo.components.ErrorUtils;
 import com.proyectozoo.zoo.entity.Animal;
 import com.proyectozoo.zoo.service.IAnimalService;
 import com.proyectozoo.zoo.service.IUploadFileService;
 import com.proyectozoo.zoo.util.JWTUtil;
 import com.proyectozoo.zoo.util.Responses;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -39,6 +42,13 @@ public class AnimalController {
      */
     @Value("${ruta.imagenes.animales}")
     private String carpetaImagenes;
+    /**
+     * Componente que permite manejar las validaciones y mostrar los mensajes de error correspondientes
+     */
+    @Autowired
+    private ErrorUtils errorUtils;
+
+
 
     /**
      * Este metodo permite obtener todos los animales de la base de datos
@@ -74,21 +84,30 @@ public class AnimalController {
      *
      * @param animal es el animal que queremos dar de alta
      * @param token  es el token de autenticacion del usuario
+     * @param bindingResult es el objeto para capturar los errores de validacion
      * @return un ResponseEntity indicando que se ha dado de alta correctamente el animal, o que algo fallo
      */
     @PostMapping("/alta")
-    public ResponseEntity<String> insertar(@RequestBody Animal animal, @RequestHeader("token") String token) {
-        if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
-            return Responses.FORBIDDEN;
-        }
-        if (service.buscarPorNombre(animal.getNombre()) != null) {
-            return Responses.conflict("Ya existe un animal con ese nombre");
-        }
-        animal.setFoto("C://imagenes//zoo//animales//default.png");
-        if (service.guardar(animal) != null) {
-            return Responses.created(String.valueOf(animal.getId()));
-        } else {
-            return Responses.notFound("Error al crear el animal");
+    public ResponseEntity<String> insertar(@RequestBody Animal animal, @RequestHeader("token") String token, BindingResult bindingResult) {
+        try {
+            if (bindingResult.hasErrors()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
+            }
+            if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
+                return Responses.FORBIDDEN;
+            }
+            if (service.buscarPorNombre(animal.getNombre()) != null) {
+                return Responses.conflict("Ya existe un animal con ese nombre");
+            }
+            animal.setFoto("C://imagenes//zoo//animales//default.png");
+            if (service.guardar(animal) != null) {
+                return Responses.created(String.valueOf(animal.getId()));
+            } else {
+                return Responses.notFound("Error al crear el animal");
+            }
+
+        } catch (ConstraintViolationException ex) {
+            return Responses.badRequest(ex.getConstraintViolations().toString());
         }
     }
 
@@ -150,27 +169,36 @@ public class AnimalController {
      *
      * @param token  es el token de autenticacion del usuario que esta intentando modificar el animal
      * @param animal es el animal con los nuevos datos
+     * @param bindingResult es el objeto para capturar los errores de validacion
      * @return un ResponseEntity indicando que se ha modificado correctamente el animal o que ha ocurrido algun error
      */
     @PutMapping("/")
-    public ResponseEntity<String> modificarAnimal(@RequestHeader("token") String token, @RequestBody Animal animal) {
-        if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
-            return Responses.FORBIDDEN;
+    public ResponseEntity<String> modificarAnimal(@RequestHeader("token") String token, @RequestBody Animal animal,  BindingResult bindingResult) {
+        try {
+            if (bindingResult.hasErrors()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
+            }
+            if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
+                return Responses.FORBIDDEN;
+            }
+            Animal dbAnimal = service.buscarPorId(animal.getId());
+            if (dbAnimal == null) {
+                return Responses.notFound("No existe un animal con ese id");
+            }
+            //en caso de que ya exista un animal en la base de datos con el mismo  nombre y este no sea el animal que
+            //estamos intentando modificar
+            if (service.buscarPorNombre(animal.getNombre()) != null && !dbAnimal.getNombre().equals(animal.getNombre())) {
+                return Responses.conflict("Ya existe un animal con ese nombre");
+            }
+            if (service.actualizar(animal) != null) {
+                return ResponseEntity.ok("Animal modificiado correctamente");
+            }
+            return Responses.badRequest("No se ha podido mofificar el animal");
+        } catch (ConstraintViolationException ex) {
+            return Responses.badRequest(ex.getConstraintViolations().toString());
         }
-        Animal dbAnimal = service.buscarPorId(animal.getId());
-        if (dbAnimal == null) {
-            return Responses.notFound("No existe un animal con ese id");
-        }
-        //en caso de que ya exista un animal en la base de datos con el mismo  nombre y este no sea el animal que
-        //estamos intentando modificar
-        if (service.buscarPorNombre(animal.getNombre()) != null && !dbAnimal.getNombre().equals(animal.getNombre())) {
-            return Responses.conflict("Ya existe un animal con ese nombre");
-        }
-        if (service.actualizar(animal) != null) {
-            return ResponseEntity.ok("Animal modificiado correctamente");
-        }
-        return Responses.badRequest("No se ha podido mofificar el animal");
     }
+
 
     /**
      * Este metodo permite modificar la imagen de un animal

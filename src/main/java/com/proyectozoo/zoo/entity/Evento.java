@@ -1,5 +1,7 @@
 package com.proyectozoo.zoo.entity;
 
+import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 import jakarta.persistence.*;
@@ -14,9 +16,11 @@ public class Evento {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
+    @NotBlank(message = "El nombre es obligatorio")
     @Column(name = "nombre")
     private String nombre;
     @Column(name = "fecha")
+    @Future(message = "La fecha no puede ser anterior ni igual al dia actual")
     private LocalDateTime fecha;
     @Column(name = "numero_plazas")
     private int numeroPlazas;

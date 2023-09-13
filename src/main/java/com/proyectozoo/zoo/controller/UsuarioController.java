@@ -1,5 +1,6 @@
 package com.proyectozoo.zoo.controller;
 
+import com.proyectozoo.zoo.components.ErrorUtils;
 import com.proyectozoo.zoo.entity.Usuario;
 import com.proyectozoo.zoo.service.IUploadFileService;
 import com.proyectozoo.zoo.service.IUsuarioService;
@@ -7,15 +8,19 @@ import com.proyectozoo.zoo.util.JWTUtil;
 import com.proyectozoo.zoo.util.Responses;
 import de.mkammerer.argon2.Argon2;
 import de.mkammerer.argon2.Argon2Factory;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Objects;
 
@@ -43,6 +48,13 @@ public class UsuarioController {
      */
     @Value("${ruta.imagenes.usuarios}")
     private String carpetaImagenes;
+    /**
+     * Componente que permite manejar las validaciones y mostrar los mensajes de error correspondientes
+     */
+    @Autowired
+    private  ErrorUtils errorUtils;
+
+
 
 
     /**
@@ -82,33 +94,32 @@ public class UsuarioController {
     /**
      * Este metodo permite registrar un usuario
      *
-     * @param usuario es el usuario con los datos que vamos a registrar
+     * @param usuario       es el usuario con los datos que vamos a registrar
+     * @param bindingResult es el objeto que nos permite capturar los errores de validacion
      * @return un ResponseEntity indicando si se ha registrado correctamente el usuario o no
      */
     @PostMapping("/registro")
-    public ResponseEntity<String> registrar(@RequestBody Usuario usuario) {
-        //comprobamos que no exista ya un usuario con ese nombre
-        if (usuarioService.buscarPorNombre(usuario.getNombre()) != null) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Ya existe un usuario con ese nombre");
-        }
-        //Comprobamos que no exista ya un usuario con ese email
-        if (usuarioService.buscarPorEmail(usuario.getEmail()) != null) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Ya existe un usuario con ese email");
-        }
-        //Ciframos la  contrasena
-        Argon2 argon2 = Argon2Factory.create(Argon2Factory.Argon2Types.ARGON2id);
-        char[] password = usuario.getPassword().toCharArray();
-        String hash = argon2.hash(1, 1024, 1, password);
-        //se la asignamos al usuario
-        usuario.setPassword(hash);
-        usuario.setFoto("C://imagenes//zoo//usuarios//default.png");
-        //asignamos el tipo user ya que todos los usuarios que se registren a traves de la pagina seran usuarios normales
-        usuario.setTipo("USER");
-        //si se guarda retornamos su id, en caso contrario retornamos un mensaje de error
-        if (usuarioService.guardar(usuario) != null) {
-            return ResponseEntity.status(HttpStatus.CREATED).body(String.valueOf(usuario.getId()));
-        } else {
-            return ResponseEntity.badRequest().body("Error al registrar el usuario");
+    public ResponseEntity<String> registrar(@Valid @RequestBody Usuario usuario, BindingResult bindingResult) {
+        try {
+            if (bindingResult.hasErrors()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
+            }
+            Argon2 argon2 = Argon2Factory.create(Argon2Factory.Argon2Types.ARGON2id);
+            char[] password = usuario.getPassword().toCharArray();
+            String hash = argon2.hash(1, 1024, 1, password);
+            //se la asignamos al usuario
+            usuario.setPassword(hash);
+            usuario.setFoto("C://imagenes//zoo//usuarios//default.png");
+            //asignamos el tipo user ya que todos los usuarios que se registren a traves de la pagina seran usuarios normales
+            usuario.setTipo("USER");
+            //si se guarda retornamos su id, en caso contrario retornamos un mensaje de error
+            if (usuarioService.guardar(usuario) != null) {
+                return ResponseEntity.status(HttpStatus.CREATED).body(String.valueOf(usuario.getId()));
+            } else {
+                return ResponseEntity.badRequest().body("Error al registrar el usuario");
+            }
+        } catch (DataIntegrityViolationException ex) {
+            return Responses.badRequest("Ya existe un usuario con ese nombre o email");
         }
     }
 
@@ -182,58 +193,65 @@ public class UsuarioController {
     /**
      * Este metodo permite modificar un usuario totalmente a excepcion de su foto de la base de datos
      *
-     * @param token   es el token de autenticacion del usaurio registrado
-     * @param usuario es el usuario con los datos del usuario a modificar
+     * @param token         es el token de autenticacion del usaurio registrado
+     * @param usuario       es el usuario con los datos del usuario a modificar
+     * @param bindingResult es el objeto que nos permite capturar los errores de validacion
      * @return un ResponseEntity indicando que se ha modificado correctamente el usuario o de que ha ocurrido algun error
      */
     @PutMapping("/")
-    public ResponseEntity<String> actualizar(@RequestHeader String token, @RequestBody Usuario usuario) {
-        if (!jwtUtil.validarToken(token)) {
-            return Responses.FORBIDDEN;
+    public ResponseEntity<String> actualizar(@RequestHeader String token, @RequestBody Usuario usuario, BindingResult bindingResult) {
+        try {
+            if (bindingResult.hasErrors()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
+            }
+            if (!jwtUtil.validarToken(token)) {
+                return Responses.FORBIDDEN;
+            }
+            Long userId = Long.parseLong(jwtUtil.getKey(token));
+            Usuario dbUser = usuarioService.buscarPorId(usuario.getId());
+            if (dbUser == null || !Objects.equals(dbUser.getId(), userId)) {
+                return Responses.notFound("No existe ningun usuario con ese id");
+            }
+            if (usuarioService.actualizar(usuario) != null) {
+                return ResponseEntity.ok("Usuario modificado correctamente");
+            }
+            return Responses.badRequest("Error al modificar el usuario");
+        } catch (DataIntegrityViolationException ex) {
+            return Responses.conflict("Ya existe un usuario con ese nombre o email");
         }
-        Long userId = Long.parseLong(jwtUtil.getKey(token));
-        Usuario dbUser = usuarioService.buscarPorId(usuario.getId());
-        if (dbUser == null || !Objects.equals(dbUser.getId(), userId)) {
-            return Responses.notFound("No existe ningun usuario con ese id");
-        }
-        if (usuarioService.buscarPorNombre(usuario.getNombre()) != null && !dbUser.getNombre().equals(usuario.getNombre())) {
-            return Responses.conflict("Ya existe un usuario con ese nombre");
-        }
-        if (usuarioService.buscarPorEmail(usuario.getEmail()) != null && !dbUser.getEmail().equals(usuario.getEmail())) {
-            return Responses.conflict("Ya existe un usuario con ese nombre");
-        }
-        if (usuarioService.actualizar(usuario) != null) {
-            return ResponseEntity.ok("Usuario modificado correctamente");
-        }
-        return Responses.badRequest("Error al modificar el usuario");
     }
 
     /**
      * Este metodo permite actualizar el nombre de un usuario
      *
-     * @param token  es el token de autenticacion del usuario logueado
-     * @param id     es el id del usuario que queremos modificar
-     * @param nombre es el nombre que le vamos a poner al usuario
+     * @param token         es el token de autenticacion del usuario logueado
+     * @param id            es el id del usuario que queremos modificar
+     * @param nombre        es el nombre que le vamos a poner al usuario
+     * @param bindingResult es el objeto que nos permite capturar los errores de validacion
      * @return un ResponseEntity indicando que se ha modificado correctamente el nombre del usuario o que ha ocurrido algun error
      */
     @PatchMapping("/actualizar/nombre/{id}")
-    public ResponseEntity<String> actualizarNombre(@RequestHeader("token") String token, @PathVariable Long id, @RequestBody String nombre) {
-        if (!jwtUtil.validarToken(token)) {
-            return Responses.FORBIDDEN;
-        }
-        Long userId = Long.parseLong(jwtUtil.getKey(token));
-        Usuario dbUser = usuarioService.buscarPorId(id);
-        if (dbUser == null || !Objects.equals(dbUser.getId(), userId)) {
-            return Responses.notFound("No existe ningun usuario con ese id");
-        }
-        if (usuarioService.buscarPorNombre(nombre) != null && !dbUser.getNombre().equals(nombre)) {
+    public ResponseEntity<String> actualizarNombre(@RequestHeader("token") String token, @PathVariable Long id, @RequestBody String nombre, BindingResult bindingResult) {
+        try {
+            if (bindingResult.hasErrors()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
+            }
+            if (!jwtUtil.validarToken(token)) {
+                return Responses.FORBIDDEN;
+            }
+            Long userId = Long.parseLong(jwtUtil.getKey(token));
+            Usuario dbUser = usuarioService.buscarPorId(id);
+            if (dbUser == null || !Objects.equals(dbUser.getId(), userId)) {
+                return Responses.notFound("No existe ningun usuario con ese id");
+            }
+            dbUser.setNombre(nombre);
+            if (usuarioService.guardar(dbUser) != null) {
+                return ResponseEntity.ok("Nombre actualizado correctamente");
+            }
+            return Responses.badRequest("Error al modificar el nombre");
+        } catch (DataIntegrityViolationException ex) {
             return Responses.conflict("Ya existe un usuario con ese nombre");
         }
-        dbUser.setNombre(nombre);
-        if (usuarioService.guardar(dbUser) != null) {
-            return ResponseEntity.ok("Nombre actualizado correctamente");
-        }
-        return Responses.badRequest("Error al modificar el nombre");
     }
 
     /**
@@ -245,23 +263,28 @@ public class UsuarioController {
      * @return un ResponseEntity indicando que se ha modificado correctamente el email del usuario o que ha ocurrido algun error
      */
     @PatchMapping("/actualizar/email/{id}")
-    public ResponseEntity<String> actualizarEmail(@RequestHeader("token") String token, @PathVariable Long id, @RequestBody String email) {
-        if (!jwtUtil.validarToken(token)) {
-            return Responses.FORBIDDEN;
-        }
-        Long userId = Long.parseLong(jwtUtil.getKey(token));
-        Usuario dbUser = usuarioService.buscarPorId(id);
-        if (dbUser == null || !Objects.equals(dbUser.getId(), userId)) {
-            return Responses.notFound("No existe ningun usuario con ese id");
-        }
-        if (usuarioService.buscarPorEmail(email) != null && !dbUser.getEmail().equals(email)) {
+    public ResponseEntity<?> actualizarEmail(@RequestHeader("token") String token, @PathVariable Long id, @RequestBody String email, BindingResult bindingResult) {
+        try {
+            if (bindingResult.hasErrors()) {
+                List<String> errores = errorUtils.getErrorMessages(bindingResult);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errores);
+            }
+            if (!jwtUtil.validarToken(token)) {
+                return Responses.FORBIDDEN;
+            }
+            Long userId = Long.parseLong(jwtUtil.getKey(token));
+            Usuario dbUser = usuarioService.buscarPorId(id);
+            if (dbUser == null || !Objects.equals(dbUser.getId(), userId)) {
+                return Responses.notFound("No existe ningun usuario con ese id");
+            }
+            dbUser.setEmail(email);
+            if (usuarioService.guardar(dbUser) != null) {
+                return ResponseEntity.ok("Email actualizado correctamente");
+            }
+            return Responses.badRequest("Error al modificar el email");
+        } catch (DataIntegrityViolationException ex) {
             return Responses.conflict("Ya existe un usuario con ese email");
         }
-        dbUser.setEmail(email);
-        if (usuarioService.guardar(dbUser) != null) {
-            return ResponseEntity.ok("Email actualizado correctamente");
-        }
-        return Responses.badRequest("Error al modificar el email");
     }
 
     /**
