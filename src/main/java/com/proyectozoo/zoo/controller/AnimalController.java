@@ -7,6 +7,7 @@ import com.proyectozoo.zoo.service.IUploadFileService;
 import com.proyectozoo.zoo.util.JWTUtil;
 import com.proyectozoo.zoo.util.Responses;
 import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -49,7 +50,6 @@ public class AnimalController {
     private ErrorUtils errorUtils;
 
 
-
     /**
      * Este metodo permite obtener todos los animales de la base de datos
      *
@@ -82,32 +82,27 @@ public class AnimalController {
     /**
      * Este metodo permite dar de alta un animal
      *
-     * @param animal es el animal que queremos dar de alta
-     * @param token  es el token de autenticacion del usuario
+     * @param animal        es el animal que queremos dar de alta
+     * @param token         es el token de autenticacion del usuario
      * @param bindingResult es el objeto para capturar los errores de validacion
      * @return un ResponseEntity indicando que se ha dado de alta correctamente el animal, o que algo fallo
      */
     @PostMapping("/alta")
     public ResponseEntity<String> insertar(@RequestBody Animal animal, @RequestHeader("token") String token, BindingResult bindingResult) {
-        try {
-            if (bindingResult.hasErrors()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
-            }
-            if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
-                return Responses.FORBIDDEN;
-            }
-            if (service.buscarPorNombre(animal.getNombre()) != null) {
-                return Responses.conflict("Ya existe un animal con ese nombre");
-            }
-            animal.setFoto("C://imagenes//zoo//animales//default.png");
-            if (service.guardar(animal) != null) {
-                return Responses.created(String.valueOf(animal.getId()));
-            } else {
-                return Responses.notFound("Error al crear el animal");
-            }
-
-        } catch (ConstraintViolationException ex) {
-            return Responses.badRequest(ex.getConstraintViolations().toString());
+        if (bindingResult.hasErrors()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
+        }
+        if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
+            return Responses.FORBIDDEN;
+        }
+        if (service.buscarPorNombre(animal.getNombre()) != null) {
+            return Responses.conflict("Ya existe un animal con ese nombre");
+        }
+        animal.setFoto("C://imagenes//zoo//animales//default.png");
+        if (service.guardar(animal) != null) {
+            return Responses.created(String.valueOf(animal.getId()));
+        } else {
+            return Responses.notFound("Error al crear el animal");
         }
     }
 
@@ -167,14 +162,13 @@ public class AnimalController {
     /**
      * Este metodo permite moficiar un animal a excepcion de su foto
      *
-     * @param token  es el token de autenticacion del usuario que esta intentando modificar el animal
-     * @param animal es el animal con los nuevos datos
+     * @param token         es el token de autenticacion del usuario que esta intentando modificar el animal
+     * @param animal        es el animal con los nuevos datos
      * @param bindingResult es el objeto para capturar los errores de validacion
      * @return un ResponseEntity indicando que se ha modificado correctamente el animal o que ha ocurrido algun error
      */
     @PutMapping("/")
-    public ResponseEntity<String> modificarAnimal(@RequestHeader("token") String token, @RequestBody Animal animal,  BindingResult bindingResult) {
-        try {
+    public ResponseEntity<String> modificarAnimal(@RequestHeader("token") String token, @RequestBody Animal animal, BindingResult bindingResult) {
             if (bindingResult.hasErrors()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
             }
@@ -194,9 +188,6 @@ public class AnimalController {
                 return ResponseEntity.ok("Animal modificiado correctamente");
             }
             return Responses.badRequest("No se ha podido mofificar el animal");
-        } catch (ConstraintViolationException ex) {
-            return Responses.badRequest(ex.getConstraintViolations().toString());
-        }
     }
 
 
@@ -234,11 +225,12 @@ public class AnimalController {
 
     /**
      * Este metodo permite obtener el animal mas popular de la semana
+     *
      * @param token es el token de autenticacion del usuario
      * @return el animal con mas comentarios en la ultima semana
      */
     @GetMapping("/popular/semana")
-    public ResponseEntity<Animal> animalMasPopularSemana(@RequestHeader("token") String token){
+    public ResponseEntity<Animal> animalMasPopularSemana(@RequestHeader("token") String token) {
         if (!jwtUtil.validarToken(token)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", "Token de autenticacion invalido").body(null);
         }
@@ -247,11 +239,12 @@ public class AnimalController {
 
     /**
      * Este metodo permite obtener el animal mas popular del mes
+     *
      * @param token es el token de autenticacion del usuario
      * @return el animal con mas comentarios en el ultimo mes
      */
     @GetMapping("/popular/mes")
-    public ResponseEntity<Animal> animalMasPopularMes(@RequestHeader("token") String token){
+    public ResponseEntity<Animal> animalMasPopularMes(@RequestHeader("token") String token) {
         if (!jwtUtil.validarToken(token)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", "Token de autenticacion invalido").body(null);
         }

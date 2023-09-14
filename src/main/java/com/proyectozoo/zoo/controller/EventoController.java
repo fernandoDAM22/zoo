@@ -107,7 +107,6 @@ public class EventoController {
      */
     @PostMapping("/")
     public ResponseEntity<String> insertar(@RequestHeader("token") String token, @RequestBody Evento evento, BindingResult bindingResult) {
-        try {
             if (bindingResult.hasErrors()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
             }
@@ -122,9 +121,6 @@ public class EventoController {
                 return ResponseEntity.ok("Evento guardado correctamente");
             }
             return Responses.badRequest("Error al guardar el evento");
-        }catch (ConstraintViolationException ex){
-            return Responses.badRequest(ex.getConstraintViolations().toString());
-        }
     }
 
     /**
@@ -189,7 +185,6 @@ public class EventoController {
      */
     @PutMapping("/")
     public ResponseEntity<String> modificarEvento(@RequestHeader("token") String token, @RequestBody Evento evento, BindingResult bindingResult) {
-        try {
             if (bindingResult.hasErrors()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
             }
@@ -207,9 +202,6 @@ public class EventoController {
                 return ResponseEntity.ok("Evento modificado correctamente");
             }
             return Responses.badRequest("Error al modificar el evento");
-        }catch (ConstraintViolationException ex){
-            return Responses.badRequest(ex.getConstraintViolations().toString());
-        }
     }
 
     /**
