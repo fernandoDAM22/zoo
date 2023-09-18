@@ -1,5 +1,6 @@
 package com.proyectozoo.zoo.util;
 
+import com.proyectozoo.zoo.components.MessageComponent;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -17,12 +18,8 @@ import java.util.Set;
 
 @RestControllerAdvice
 public class CustomHandler {
-    private final MessageSource messageSource;
-
     @Autowired
-    public CustomHandler(MessageSource messageSource) {
-        this.messageSource = messageSource;
-    }
+    private MessageComponent messageComponent;
     /**
      * Este metodo permite manejar las excepciones MissingRequestHeader
      * @param sqlException es la excepcion que ha ocurrido
@@ -45,7 +42,7 @@ public class CustomHandler {
             StringBuilder builder = new StringBuilder();
             Locale currentLocale = LocaleContextHolder.getLocale();
             violations.forEach(violation -> {
-                String message = messageSource.getMessage(violation.getMessage(), null, currentLocale);
+                String message = messageComponent.getMessage(violation.getMessage());
                 builder.append(" ").append(message).append("\n");
             });
             errorMessage = builder.toString();
@@ -61,7 +58,7 @@ public class CustomHandler {
      */
     @ExceptionHandler(ExpiredJwtException.class)
     public ResponseEntity<String>  handleExpiredJwtException(ExpiredJwtException expiredJwtException){
-        return Responses.badRequest("El token de autenticacion ha expirado");
+        return Responses.badRequest(messageComponent.getMessage("error.usuario.token_expirado"));
     }
 
 }

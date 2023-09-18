@@ -1,6 +1,8 @@
 package com.proyectozoo.zoo.service.impl;
 
+import com.proyectozoo.zoo.components.MessageComponent;
 import com.proyectozoo.zoo.service.IUploadFileService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -12,6 +14,8 @@ import java.util.UUID;
 
 @Service
 public class UploadFilesServiceImpl implements IUploadFileService {
+    @Autowired
+    private MessageComponent message;
     /**
      * Este metodo permite subir una imagen al servidor
      * @param file es la imagen que se va a subir
@@ -30,10 +34,10 @@ public class UploadFilesServiceImpl implements IUploadFileService {
             long fileSize = file.getSize();
             long maxSize = 5 * 1024 * 1024;
             if(fileSize > maxSize){
-                return "Tamaño maximo excedido";
+                return message.getMessage("error.foto.tamano");
             }
             if(!file.getOriginalFilename().endsWith(".jpg") && !file.getOriginalFilename().endsWith(".jpeg") && !file.getOriginalFilename().endsWith(".png")){
-                return "Solo imagenes";
+                return message.getMessage("error.foto.formato");
             }
             //creamos el nombre del archivo
             String fileExtension = fileOriginalnName.substring(fileOriginalnName.lastIndexOf("."));
