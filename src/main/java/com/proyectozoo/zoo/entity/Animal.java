@@ -18,18 +18,18 @@ public class Animal {
     @Column(name = "id")
     private Long id;
 
-    @NotBlank(message = "El nombre es obligatorio")
+    @NotBlank(message = "error.animal.nombre")
     @Column(name = "nombre",unique = true)
-    @Size(min = 1, message = "El nombre no puede estar vacio")
+    @Size(min = 4, message = "error.animal.longitud_nombre")
     private String nombre;
 
     @Column(name = "especie")
-    @NotBlank(message = "La especie es obligatoria")
-    @Size(min = 1, message = "La especie no puede estar vacia")
+    @NotBlank(message = "error.animal.especie")
+    @Size(min = 4, message = "error.animal.longitud_especie")
     private String especie;
 
     @Column(name = "fecha_nacimiento")
-    @PastOrPresent(message = "La fecha de nacimiento no puede ser igual o mayor a la fecha actual")
+    @PastOrPresent(message = "error.animal.fecha")
     private Date fechaNacimiento;
 
     @Column(name = "curiosidad")

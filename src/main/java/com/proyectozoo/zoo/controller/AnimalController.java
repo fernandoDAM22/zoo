@@ -1,13 +1,14 @@
 package com.proyectozoo.zoo.controller;
 
 import com.proyectozoo.zoo.components.ErrorUtils;
+import com.proyectozoo.zoo.components.JWTUtil;
+import com.proyectozoo.zoo.components.MessageComponent;
 import com.proyectozoo.zoo.entity.Animal;
 import com.proyectozoo.zoo.service.IAnimalService;
 import com.proyectozoo.zoo.service.IUploadFileService;
-import com.proyectozoo.zoo.util.JWTUtil;
 import com.proyectozoo.zoo.util.Responses;
-import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
+import org.aspectj.bridge.MessageUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -48,6 +49,11 @@ public class AnimalController {
      */
     @Autowired
     private ErrorUtils errorUtils;
+    /**
+     * Componente que nos permite tener acceso al fichero de mensajes
+     */
+    @Autowired
+    private MessageComponent message;
 
 
     /**
@@ -59,7 +65,7 @@ public class AnimalController {
     @GetMapping("/")
     public ResponseEntity<List<Animal>> obtenerAnimales(@RequestHeader String token) {
         if (!jwtUtil.validarToken(token)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", "Token de autenticacion invalido").body(null);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", message.getMessage("error.usuario.token_expirado")).body(null);
         }
         return ResponseEntity.ok(service.obtenerAnimales());
     }
@@ -74,7 +80,7 @@ public class AnimalController {
     @GetMapping("/seccion/{id}")
     public ResponseEntity<List<Animal>> obtenerAnimalesPorSeccion(@RequestHeader("token") String token, @PathVariable Long id) {
         if (!jwtUtil.validarToken(token)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", "Token de autenticacion invalido").body(null);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", message.getMessage("error.usuario.token")).body(null);
         }
         return ResponseEntity.ok(service.obtenerAnimalesPorSeccion(id));
     }
@@ -84,25 +90,25 @@ public class AnimalController {
      *
      * @param animal        es el animal que queremos dar de alta
      * @param token         es el token de autenticacion del usuario
-     * @param bindingResult es el objeto para capturar los errores de validacion
+     * @param bindingResult objeto para poder realizar la validacion de los campos
      * @return un ResponseEntity indicando que se ha dado de alta correctamente el animal, o que algo fallo
      */
     @PostMapping("/alta")
-    public ResponseEntity<String> insertar(@RequestBody Animal animal, @RequestHeader("token") String token, BindingResult bindingResult) {
+    public ResponseEntity<String> insertar(@RequestHeader("token") String token, @Valid @RequestBody Animal animal, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
         }
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
-            return Responses.FORBIDDEN;
+            return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
         if (service.buscarPorNombre(animal.getNombre()) != null) {
-            return Responses.conflict("Ya existe un animal con ese nombre");
+            return Responses.conflict(message.getMessage("error.animal.nombre_repetido"));
         }
         animal.setFoto("C://imagenes//zoo//animales//default.png");
         if (service.guardar(animal) != null) {
             return Responses.created(String.valueOf(animal.getId()));
         } else {
-            return Responses.notFound("Error al crear el animal");
+            return Responses.notFound(message.getMessage("error.animal.insertar"));
         }
     }
 
@@ -117,11 +123,11 @@ public class AnimalController {
     @PostMapping("/imagen/{id}")
     public ResponseEntity<String> subir(@PathVariable Long id, @RequestHeader("token") String token, @RequestParam("file") MultipartFile file) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
-            return Responses.FORBIDDEN;
+            return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
         Animal animal = service.buscarPorId(id);
         if (animal == null) {
-            return Responses.badRequest("No existe un animal con ese id");
+            return Responses.badRequest(message.getMessage("error.animal.id"));
         }
         String path = uploadFileService.subirImagen(file, carpetaImagenes);
         if (!path.startsWith("C:")) {
@@ -144,18 +150,18 @@ public class AnimalController {
     @DeleteMapping("/{id}")
     public ResponseEntity<String> borrarAnimal(@PathVariable Long id, @RequestHeader("token") String token) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
-            return Responses.FORBIDDEN;
+            return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
         Animal animal = service.buscarPorId(id);
         if (animal == null) {
-            return Responses.notFound("No existe ningun animal con ese id");
+            return Responses.notFound(message.getMessage("error.animal.id"));
         }
         File file = new File(animal.getFoto());
         file.delete();
         if (service.borrar(id) != null) {
-            return ResponseEntity.ok("Animal borrado correctamente");
+            return ResponseEntity.ok(message.getMessage("mensaje.animal.borrado"));
         } else {
-            return Responses.badRequest("Error al borrar el animal");
+            return Responses.badRequest(message.getMessage("error.animal.borrar"));
         }
     }
 
@@ -164,30 +170,30 @@ public class AnimalController {
      *
      * @param token         es el token de autenticacion del usuario que esta intentando modificar el animal
      * @param animal        es el animal con los nuevos datos
-     * @param bindingResult es el objeto para capturar los errores de validacion
+     * @param bindingResult objeto para poder realizar la validacion de los campos
      * @return un ResponseEntity indicando que se ha modificado correctamente el animal o que ha ocurrido algun error
      */
     @PutMapping("/")
-    public ResponseEntity<String> modificarAnimal(@RequestHeader("token") String token, @RequestBody Animal animal, BindingResult bindingResult) {
-            if (bindingResult.hasErrors()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
-            }
-            if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
-                return Responses.FORBIDDEN;
-            }
-            Animal dbAnimal = service.buscarPorId(animal.getId());
-            if (dbAnimal == null) {
-                return Responses.notFound("No existe un animal con ese id");
-            }
-            //en caso de que ya exista un animal en la base de datos con el mismo  nombre y este no sea el animal que
-            //estamos intentando modificar
-            if (service.buscarPorNombre(animal.getNombre()) != null && !dbAnimal.getNombre().equals(animal.getNombre())) {
-                return Responses.conflict("Ya existe un animal con ese nombre");
-            }
-            if (service.actualizar(animal) != null) {
-                return ResponseEntity.ok("Animal modificiado correctamente");
-            }
-            return Responses.badRequest("No se ha podido mofificar el animal");
+    public ResponseEntity<String> modificarAnimal(@RequestHeader("token") String token, @Valid @RequestBody Animal animal, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
+        }
+        if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
+            return Responses.forbidden(message.getMessage("error.usuario.token"));
+        }
+        Animal dbAnimal = service.buscarPorId(animal.getId());
+        if (dbAnimal == null) {
+            return Responses.notFound(message.getMessage("error.animal.id"));
+        }
+        //en caso de que ya exista un animal en la base de datos con el mismo  nombre y este no sea el animal que
+        //estamos intentando modificar
+        if (service.buscarPorNombre(animal.getNombre()) != null && !dbAnimal.getNombre().equals(animal.getNombre())) {
+            return Responses.conflict(message.getMessage("error.animal.nombre_repetido"));
+        }
+        if (service.actualizar(animal) != null) {
+            return ResponseEntity.ok(message.getMessage("mensaje.animal.modificado"));
+        }
+        return Responses.badRequest(message.getMessage("error.animal.modificar"));
     }
 
 
@@ -202,11 +208,11 @@ public class AnimalController {
     @PatchMapping("/modificar/imagen/{id}")
     public ResponseEntity<String> modificarImagen(@PathVariable Long id, @RequestHeader("token") String token, @RequestParam("file") MultipartFile file) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
-            return Responses.FORBIDDEN;
+            return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
         Animal dbAnimal = service.buscarPorId(id);
         if (dbAnimal == null) {
-            return Responses.notFound("No existe un animal con ese id");
+            return Responses.notFound(message.getMessage("error.animal.id"));
         }
         if (dbAnimal.getFoto() != null) {
             File imagen = new File(dbAnimal.getFoto());
@@ -220,7 +226,7 @@ public class AnimalController {
         if (service.guardar(dbAnimal) != null) {
             return ResponseEntity.ok(path);
         }
-        return Responses.badRequest("Error al modificar la imagen");
+        return Responses.badRequest(message.getMessage("error.animal.modificar_imagen"));
     }
 
     /**
@@ -232,7 +238,7 @@ public class AnimalController {
     @GetMapping("/popular/semana")
     public ResponseEntity<Animal> animalMasPopularSemana(@RequestHeader("token") String token) {
         if (!jwtUtil.validarToken(token)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", "Token de autenticacion invalido").body(null);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", message.getMessage("error.usuario.token")).body(null);
         }
         return ResponseEntity.ok(service.animalMasVotadoSemana());
     }
@@ -246,7 +252,7 @@ public class AnimalController {
     @GetMapping("/popular/mes")
     public ResponseEntity<Animal> animalMasPopularMes(@RequestHeader("token") String token) {
         if (!jwtUtil.validarToken(token)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", "Token de autenticacion invalido").body(null);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error",message.getMessage("error.usuario.token")).body(null);
         }
         return ResponseEntity.ok(service.animalMasVotadoMes());
     }

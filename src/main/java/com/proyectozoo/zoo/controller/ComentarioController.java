@@ -1,16 +1,20 @@
 package com.proyectozoo.zoo.controller;
 
+import com.proyectozoo.zoo.components.ErrorUtils;
+import com.proyectozoo.zoo.components.JWTUtil;
+import com.proyectozoo.zoo.components.MessageComponent;
 import com.proyectozoo.zoo.entity.Comentario;
 import com.proyectozoo.zoo.service.IComentarioService;
-import com.proyectozoo.zoo.util.JWTUtil;
 import com.proyectozoo.zoo.util.Responses;
+import jakarta.validation.Valid;
+import org.aspectj.bridge.IMessage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 
@@ -27,29 +31,42 @@ public class ComentarioController {
      */
     @Autowired
     private JWTUtil jwtUtil;
+    /**
+     * Componente que permite manejar las validaciones y mostrar los mensajes de error correspondientes
+     */
+    @Autowired
+    private ErrorUtils errorUtils;
+    /**
+     * Componente que nos permite tener acceso al fichero de mensajes
+     */
+    @Autowired
+    private MessageComponent message;
 
     /**
      * Este metodo permite insertar un comentario en la base de datos
      *
-     * @param token      es el token de autenticacion del usuario
-     * @param comentario es el comentario que queremos insertar en la base de datos
+     * @param token         es el token de autenticacion del usuario
+     * @param comentario    es el comentario que queremos insertar en la base de datos
+     * @param bindingResult objeto para poder realizar la validacion de los campos
      * @return un ResponseEntity indicando que se ha insertado correctamente el comentario o que ha ocurrido algun error
      */
     @PostMapping("/")
-    public ResponseEntity<String> guardar(@RequestHeader("token") String token, @RequestBody Comentario comentario) {
+    public ResponseEntity<String> guardar(@RequestHeader("token") String token, @Valid @RequestBody Comentario comentario, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
+        }
         if (!jwtUtil.validarToken(token)) {
-            return Responses.FORBIDDEN;
+            return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
         Long idUsuario = Long.parseLong(jwtUtil.getKey(token));
         comentario.setIdUsuario(idUsuario);
         if (!comentarioService.comentarioDisponible(comentario.getIdUsuario(), comentario.getIdAnimal())) {
-            return Responses.badRequest("Solo puedes hacer un comentario por animal y dia");
+            return Responses.badRequest(message.getMessage("error.comentario.limite"));
         }
-        comentario.setFecha(LocalDate.now());
         if (comentarioService.guardar(comentario) != null) {
-            return ResponseEntity.ok("Comentario guardado correctamente");
+            return ResponseEntity.ok(message.getMessage("mensaje.comentario.guardado"));
         }
-        return Responses.badRequest("Error al guardar el comentario");
+        return Responses.badRequest(message.getMessage("error.comentario.guardar"));
     }
 
     /**
@@ -62,20 +79,20 @@ public class ComentarioController {
     @DeleteMapping("/{id}")
     public ResponseEntity<String> borrarComentario(@PathVariable Long id, @RequestHeader("token") String token) {
         if (!jwtUtil.validarToken(token)) {
-            return Responses.FORBIDDEN;
+            return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
         Comentario dbComentario = comentarioService.obtenerPorId(id);
         if (dbComentario == null) {
-            return Responses.notFound("No existe un comentario con ese id");
+            return Responses.notFound("error.comentario.id");
         }
         Long idUsuario = Long.parseLong(jwtUtil.getKey(token));
         if (!jwtUtil.validarAdmin(token) && !Objects.equals(dbComentario.getIdUsuario(), idUsuario)) {
-            return Responses.badRequest("No tienes un comentario con ese id");
+            return Responses.badRequest("error.comentario.id_usuario");
         }
         if (comentarioService.borrar(id) != null) {
-            return ResponseEntity.ok("Comentario borrado correctamente");
+            return ResponseEntity.ok(message.getMessage("mensaje.comentario.borrado"));
         }
-        return Responses.badRequest("Error al borrar el comentario");
+        return Responses.badRequest(message.getMessage("error.comentario.borrar"));
     }
 
     /**
@@ -87,21 +104,22 @@ public class ComentarioController {
     @GetMapping("/")
     public ResponseEntity<List<Comentario>> obtenerComentarios(@RequestHeader("token") String token) {
         if (!jwtUtil.validarToken(token)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", "Token de autenticacion invalido").body(null);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", message.getMessage("error.usuario.token")).body(null);
         }
         return ResponseEntity.ok(comentarioService.obtener());
     }
 
     /**
      * Este metodo permite obtener todos los comentarios de un animal
+     *
      * @param token es el token de autenticacion del usuario
-     * @param id es el id del animal del que queremos obtener los comentarios
+     * @param id    es el id del animal del que queremos obtener los comentarios
      * @return una lista con todos los comentarios del animal
      */
     @GetMapping("/animal/{id}")
     public ResponseEntity<List<Comentario>> obtenerComentarioPorAnimal(@RequestHeader("token") String token, @PathVariable Long id) {
         if (!jwtUtil.validarToken(token)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", "Token de autenticacion invalido").body(null);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", message.getMessage("error.usuario.token")).body(null);
         }
         return ResponseEntity.ok(comentarioService.obtenerComentariosPorAnimal(id));
     }

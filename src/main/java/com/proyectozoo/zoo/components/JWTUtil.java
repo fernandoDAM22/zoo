@@ -1,4 +1,4 @@
-package com.proyectozoo.zoo.util;
+package com.proyectozoo.zoo.components;
 
 import com.proyectozoo.zoo.entity.Usuario;
 import com.proyectozoo.zoo.service.IUsuarioService;
@@ -24,15 +24,23 @@ public class JWTUtil {
 
     @Value("${security.jwt.ttlMillis}")
     private long ttlMillis;
-
+    /**
+     * Servicio del usuario
+     */
     @Autowired
     private IUsuarioService usuarioService;
+    /**
+     * Comoponente que nos permite acceder al fichero de mensajes
+     */
+    @Autowired
+    private MessageComponent message;
 
     private final Logger log = LoggerFactory.getLogger(JWTUtil.class);
 
     /**
      * Este metodo permite crear un token de autenticacion
-     * @param id es el id del usuario para el que se va a crear el token
+     *
+     * @param id      es el id del usuario para el que se va a crear el token
      * @param subject es el email del usuario para el que se va a crear el token
      * @return el token
      */
@@ -71,6 +79,7 @@ public class JWTUtil {
 
     /**
      * Este metodo permite obtener el email del usuario a partir de su token
+     *
      * @param jwt es el token del que queremos extrear el usuario
      * @return el email del usuario
      */
@@ -84,6 +93,7 @@ public class JWTUtil {
 
     /**
      * Este metodo permite obtener el id del usuario a partir de su token
+     *
      * @param jwt es el token del que queremos extraer el usuario
      * @return el id del usuario
      */
@@ -97,20 +107,24 @@ public class JWTUtil {
 
     /**
      * Este metodo permite comprobar si un token es correcto
+     *
      * @param token es el token que queremos validar
      * @return true si es correcto, false si no
      */
-    public boolean validarToken(String token){
+    public boolean validarToken(String token) {
         String userID = getKey(token);
         return userID != null;
+
+
     }
 
     /**
      * Este metodo permite validar si un usuario es administrador a partir de su token
+     *
      * @param token es el token del usuario que queremos comprobar
      * @return true si el usuario es administrador, false si no
      */
-    public boolean validarAdmin(String token){
+    public boolean validarAdmin(String token) {
         String userID = getKey(token);
         Usuario usuario = usuarioService.buscarPorId(Long.parseLong(userID));
         return usuario != null && usuario.getTipo().equals("ADMIN");

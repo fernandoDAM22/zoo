@@ -15,11 +15,13 @@ public class Seccion {
     private Long id;
 
     @Column(name = "nombre")
-    @NotBlank(message = "El nombre es obligatorio")
-    @Size(min = 1, message = "El nombre no puede estar vacio")
+    @NotBlank(message = "error.seccion.nombre")
+    @Size(min = 4, message = "error.seccion.longitud_nombre")
     private String nombre;
 
     @Column(name = "descripcion")
+    @Size(min = 10,message = "error.seccion.longitud_descripcion")
+    @NotBlank(message = "error.seccion.descripcion")
     private String descripcion;
 
     @Column(name = "foto")

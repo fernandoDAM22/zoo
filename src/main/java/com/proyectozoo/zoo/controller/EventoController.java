@@ -1,12 +1,13 @@
 package com.proyectozoo.zoo.controller;
 
 import com.proyectozoo.zoo.components.ErrorUtils;
+import com.proyectozoo.zoo.components.JWTUtil;
+import com.proyectozoo.zoo.components.MessageComponent;
 import com.proyectozoo.zoo.entity.Evento;
 import com.proyectozoo.zoo.service.IEventoService;
 import com.proyectozoo.zoo.service.IUploadFileService;
-import com.proyectozoo.zoo.util.JWTUtil;
 import com.proyectozoo.zoo.util.Responses;
-import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -48,6 +49,11 @@ public class EventoController {
      */
     @Autowired
     private ErrorUtils errorUtils;
+    /**
+     * Componente que nos permite tener acceso al fichero de mensajes
+     */
+    @Autowired
+    private MessageComponent message;
 
     /**
      * Este metodo permite obtener todos los eventos de la base de datos
@@ -58,7 +64,7 @@ public class EventoController {
     @GetMapping("/")
     public ResponseEntity<List<Evento>> obtener(@RequestHeader("token") String token) {
         if (!jwtUtil.validarToken(token)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", "Token de autenticacion invalido").body(null);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", message.getMessage("error.usuario.token")).body(null);
         }
         return ResponseEntity.ok(service.obtener());
     }
@@ -73,7 +79,7 @@ public class EventoController {
     @GetMapping("/seccion/{id}")
     public ResponseEntity<List<Evento>> obtenerEventosPorSeccion(@PathVariable Long id, @RequestHeader("token") String token) {
         if (!jwtUtil.validarToken(token)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", "Token de autenticacion invalido").body(null);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", message.getMessage("error.usuario.token")).body(null);
         }
         return ResponseEntity.ok(service.obtenerEventosPorSeccion(id));
     }
@@ -88,11 +94,11 @@ public class EventoController {
     @GetMapping("/{id}")
     public ResponseEntity<Evento> obtenerEvento(@PathVariable Long id, @RequestHeader("token") String token) {
         if (!jwtUtil.validarToken(token)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", "Token de autenticacion invalido").body(null);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", message.getMessage("error.usuario.token")).body(null);
         }
         Evento evento = service.buscarPorId(id);
         if (evento == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).header("Error", "No existe un evento con ese id").body(null);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).header("Error", message.getMessage("error.evento.id")).body(null);
         }
         return ResponseEntity.ok(evento);
     }
@@ -100,27 +106,27 @@ public class EventoController {
     /**
      * Este metodo permite insertar un evento
      *
-     * @param token  es el token de autenticacion del usuario
-     * @param evento es el evento que queremos insertar
-     * @param bindingResult es el objeto para poder capturar los errores de validacion
+     * @param token         es el token de autenticacion del usuario
+     * @param evento        es el evento que queremos insertar
+     * @param bindingResult objeto para poder realizar la validacion de los campos
      * @return un ResponseEntity indicando que se ha insertado correctamente el evento o que ha ocurrido algun error
      */
     @PostMapping("/")
-    public ResponseEntity<String> insertar(@RequestHeader("token") String token, @RequestBody Evento evento, BindingResult bindingResult) {
-            if (bindingResult.hasErrors()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
-            }
-            if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
-                return Responses.FORBIDDEN;
-            }
-            if (service.buscarPorNombre(evento.getNombre()) != null) {
-                return Responses.badRequest("Ya existe un evento con ese nombre");
-            }
-            evento.setFoto("C://imagenes//zoo//eventos//default.png");
-            if (service.guardar(evento) != null) {
-                return ResponseEntity.ok("Evento guardado correctamente");
-            }
-            return Responses.badRequest("Error al guardar el evento");
+    public ResponseEntity<String> insertar(@RequestHeader("token") String token, @Valid @RequestBody Evento evento, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
+        }
+        if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
+            return Responses.forbidden(message.getMessage("error.usuario.token"));
+        }
+        if (service.buscarPorNombre(evento.getNombre()) != null) {
+            return Responses.badRequest(message.getMessage("error.evento.nombre_repetido"));
+        }
+        evento.setFoto("C://imagenes//zoo//eventos//default.png");
+        if (service.guardar(evento) != null) {
+            return ResponseEntity.ok(String.valueOf(evento.getId()));
+        }
+        return Responses.badRequest(message.getMessage("error.evento.guardar"));
     }
 
     /**
@@ -134,11 +140,11 @@ public class EventoController {
     @PostMapping("/imagen/{id}")
     public ResponseEntity<String> subir(@PathVariable Long id, @RequestHeader("token") String token, @RequestParam("file") MultipartFile file) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
-            return Responses.FORBIDDEN;
+            return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
         Evento evento = service.buscarPorId(id);
         if (evento == null) {
-            return Responses.badRequest("No existe un evento con ese nombre");
+            return Responses.badRequest(message.getMessage("error.evento.nombre"));
         }
         String path = uploadFileService.subirImagen(file, carpetaImagenes);
 
@@ -161,47 +167,47 @@ public class EventoController {
     @DeleteMapping("/{id}")
     public ResponseEntity<String> borrar(@RequestHeader("token") String token, @PathVariable Long id) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
-            return Responses.FORBIDDEN;
+            return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
         Evento dbEvento = service.buscarPorId(id);
         if (dbEvento == null) {
-            return Responses.badRequest("No existe un evento con ese id");
+            return Responses.badRequest(message.getMessage("error.evento.id"));
         }
         File file = new File(dbEvento.getFoto());
         file.delete();
         if (service.borrar(id) != null) {
-            return ResponseEntity.ok("Evento borrado correctamente");
+            return ResponseEntity.ok(message.getMessage("mensaje.evento.borrado"));
         }
-        return Responses.badRequest("Error al borrar el evento");
+        return Responses.badRequest(message.getMessage("error.evento.borrar"));
     }
 
     /**
      * Este metodo permite modificar un evento
      *
-     * @param token  es el token de autenticacion del usuario que esta intentando modificar el evento
-     * @param evento es el evento que queremos modificar
-     * @param bindingResult es el objeto para poder capturar los errores de validacion
+     * @param token         es el token de autenticacion del usuario que esta intentando modificar el evento
+     * @param evento        es el evento que queremos modificar
+     * @param bindingResult objeto para poder realizar la validacion de los campos
      * @return un ResponseEntity indicando que se ha modificado el evento correctamente o que ha ocurrido algun error
      */
     @PutMapping("/")
-    public ResponseEntity<String> modificarEvento(@RequestHeader("token") String token, @RequestBody Evento evento, BindingResult bindingResult) {
-            if (bindingResult.hasErrors()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
-            }
-            if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
-                return Responses.FORBIDDEN;
-            }
-            Evento dbEvento = service.buscarPorId(evento.getId());
-            if (dbEvento == null) {
-                return Responses.notFound("No existe ningun evento con ese id");
-            }
-            if (service.buscarPorNombre(evento.getNombre()) != null && !evento.getNombre().equals(dbEvento.getNombre())) {
-                return Responses.conflict("Ya existe un evento con ese nombre");
-            }
-            if (service.modificar(evento) != null) {
-                return ResponseEntity.ok("Evento modificado correctamente");
-            }
-            return Responses.badRequest("Error al modificar el evento");
+    public ResponseEntity<String> modificarEvento(@RequestHeader("token") String token, @Valid @RequestBody Evento evento, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
+        }
+        if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
+            return Responses.forbidden(message.getMessage("error.usuario.token"));
+        }
+        Evento dbEvento = service.buscarPorId(evento.getId());
+        if (dbEvento == null) {
+            return Responses.notFound(message.getMessage("error.evento.id"));
+        }
+        if (service.buscarPorNombre(evento.getNombre()) != null && !evento.getNombre().equals(dbEvento.getNombre())) {
+            return Responses.conflict(message.getMessage("error.evento.nombre_repetido"));
+        }
+        if (service.modificar(evento) != null) {
+            return ResponseEntity.ok(message.getMessage("mensaje.evento.actualizado"));
+        }
+        return Responses.badRequest(message.getMessage("error.evento.modificar"));
     }
 
     /**
@@ -215,11 +221,11 @@ public class EventoController {
     @PatchMapping("/modificar/imagen/{id}")
     public ResponseEntity<String> modificarImagen(@PathVariable Long id, @RequestHeader("token") String token, @RequestParam("file") MultipartFile file) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
-            return Responses.FORBIDDEN;
+            return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
         Evento dbEvento = service.buscarPorId(id);
         if (dbEvento == null) {
-            return Responses.notFound("No existe ningun evento con ese id");
+            return Responses.notFound(message.getMessage("error.evento.id"));
         }
         if (dbEvento.getFoto() != null) {
             File imagen = new File(dbEvento.getFoto());
@@ -233,7 +239,7 @@ public class EventoController {
         if (service.guardar(dbEvento) != null) {
             return ResponseEntity.ok(path);
         }
-        return Responses.badRequest("No se ha podido modificar la imagen");
+        return Responses.badRequest(message.getMessage("error.evento.modificar_imagen"));
     }
 
 }

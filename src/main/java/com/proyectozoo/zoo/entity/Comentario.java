@@ -4,12 +4,15 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
 
 @Entity
 @Data
 @Table(name = "comentarios")
+@EntityListeners(AuditingEntityListener.class)
 public class Comentario {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,11 +26,11 @@ public class Comentario {
     private long idUsuario;
 
     @Column(name = "comentario")
-    @NotBlank(message = "El comentario es obligatorio")
-    @Size(min = 1,message = "El comentario no puede estar vacio")
+    @NotBlank(message = "error.comentario.comentario")
+    @Size(min = 1,message = "error.comentario.comentario_vacio")
     private String comentario;
 
-
     @Column(name = "fecha")
+    @CreatedDate
     private LocalDate fecha;
 }

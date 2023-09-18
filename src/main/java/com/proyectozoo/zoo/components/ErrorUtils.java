@@ -1,8 +1,8 @@
 package com.proyectozoo.zoo.components;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.BindingResult;
-import org.springframework.validation.DefaultMessageCodesResolver;
 import org.springframework.validation.FieldError;
 
 import java.util.List;
@@ -12,6 +12,9 @@ import java.util.stream.Collectors;
 public class ErrorUtils {
 
 
+    @Autowired
+    private MessageComponent message;
+
     public List<String> getErrorMessages(BindingResult bindingResult) {
         return bindingResult.getFieldErrors()
                 .stream()
@@ -20,7 +23,7 @@ public class ErrorUtils {
     }
 
     private String resolveErrorMessage(FieldError fieldError) {
-        return fieldError.getDefaultMessage();
+        return message.getMessage(fieldError.getDefaultMessage());
     }
 }
 

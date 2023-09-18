@@ -1,9 +1,6 @@
 package com.proyectozoo.zoo.entity;
 
-import jakarta.validation.constraints.Future;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 
 import jakarta.persistence.*;
@@ -19,17 +16,18 @@ public class Evento {
     @Column(name = "id")
     private Long id;
 
-    @NotBlank(message = "El nombre es obligatorio")
+    @NotBlank(message = "error.evento.nombre")
+    @Size(min = 4, message = "error.evento.longitud_nombre")
     @Column(name = "nombre")
     private String nombre;
 
     @Column(name = "fecha")
-    @Future(message = "La fecha no puede ser anterior ni igual al dia actual")
+    @Future(message = "error.evento.fecha")
     private LocalDateTime fecha;
 
     @Column(name = "numero_plazas")
-    @Min(value = 200,message = "El numero minimo de plazas para un evento es 200")
-    @Max(value = 2000, message = "El numero maximo de plazas para un evento es 2000")
+    @Min(value = 200,message = "error.evento.minimo_plazas")
+    @Max(value = 2000, message = "error.evento.maximo_plazas")
     private int numeroPlazas;
 
     @Column(name = "id_seccion")

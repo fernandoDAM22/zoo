@@ -1,11 +1,13 @@
 package com.proyectozoo.zoo.controller;
 
 import com.proyectozoo.zoo.components.ErrorUtils;
+import com.proyectozoo.zoo.components.JWTUtil;
+import com.proyectozoo.zoo.components.MessageComponent;
 import com.proyectozoo.zoo.entity.Seccion;
 import com.proyectozoo.zoo.service.ISeccionService;
 import com.proyectozoo.zoo.service.IUploadFileService;
-import com.proyectozoo.zoo.util.JWTUtil;
 import com.proyectozoo.zoo.util.Responses;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -21,7 +23,7 @@ import java.util.List;
 
 @Controller
 @RequestMapping("api/secciones")
-public class SeccionController {
+public class    SeccionController {
     /**
      * Instancia del servicio
      */
@@ -47,32 +49,36 @@ public class SeccionController {
      */
     @Autowired
     private ErrorUtils errorUtils;
-
+    /**
+     * Componente que nos permite tener acceso al fichero de mensajes
+     */
+    @Autowired
+    private MessageComponent message;
     /**
      * Este metodo permite dar de alta una seccion
      *
-     * @param seccion es la seccion que vamos a dar de alta
-     * @param token   es el token de autenticacion del administrador
-     * @param bindingResult es el objeto para capturar los errores de validacion
+     * @param seccion       es la seccion que vamos a dar de alta
+     * @param token         es el token de autenticacion del administrador
+     * @param bindingResult objeto para poder realizar la validacion de los campos
      * @return un responseEntity indicando que se ha dado de alta la seccion o que ha ocurrido algun error
      */
     @PostMapping("/alta")
-    public ResponseEntity<String> alta(@RequestBody Seccion seccion, @RequestHeader(name = "token") String token, BindingResult bindingResult) {
+    public ResponseEntity<String> alta(@RequestHeader(name = "token") String token, @Valid @RequestBody Seccion seccion, BindingResult bindingResult) {
         try {
             if (bindingResult.hasErrors()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
             }
             if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
-                return Responses.FORBIDDEN;
+                return Responses.forbidden(message.getMessage("error.usuario.token"));
             }
             seccion.setFoto("C://imagenes//zoo//secciones//default.png");
             if (service.guardar(seccion) != null) {
                 return Responses.created(String.valueOf(seccion.getId()));
             } else {
-                return Responses.notFound("Error al crear la categoria");
+                return Responses.notFound(message.getMessage("error.seccion.crear"));
             }
         } catch (DataIntegrityViolationException ex) {
-            return Responses.conflict("Ya existe una seccion con ese nombre");
+            return Responses.conflict(message.getMessage("error.seccion.nombre_repetido"));
         }
     }
 
@@ -87,7 +93,7 @@ public class SeccionController {
     @PostMapping("/imagen/{id}")
     public ResponseEntity<String> subirImagen(@PathVariable Long id, @RequestHeader("token") String token, @RequestParam("file") MultipartFile file) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
-            return Responses.FORBIDDEN;
+            return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
         String path = uploadFileService.subirImagen(file, carpetaImagenes);
         if (!path.startsWith("C:")) {
@@ -124,45 +130,45 @@ public class SeccionController {
     @DeleteMapping("/{id}")
     public ResponseEntity<String> borrarSeccion(@PathVariable Long id, @RequestHeader("token") String token) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
-            return Responses.FORBIDDEN;
+            return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
         Seccion seccion = service.buscarPorId(id);
         File file = new File(seccion.getFoto());
         file.delete();
         if (service.borrar(id) != null) {
-            return ResponseEntity.ok("Seccion borrada correctamente");
+            return ResponseEntity.ok(message.getMessage("mensaje.seccion.borrada"));
         } else {
-            return Responses.badRequest("Error al borrar la seccion");
+            return Responses.badRequest(message.getMessage("error.seccion.borrar"));
         }
     }
 
     /**
      * Este metodo permite modificar una seccion a excepcion de su foto
      *
-     * @param token   es el token de autenticacion del usuario que esta intentando modificar la secccion
-     * @param seccion es la seccion con los datos a modificar
-     * @param bindingResult es el objeto para capturar los errores de validacion
+     * @param token         es el token de autenticacion del usuario que esta intentando modificar la secccion
+     * @param seccion       es la seccion con los datos a modificar
+     * @param bindingResult objeto para poder realizar la validacion de los campos
      * @return un ResponseEntity indicando que se ha modificado correctamente la seccion o que ha ocurrido algun error
      */
     @PutMapping("/modificar")
-    public ResponseEntity<String> modificar(@RequestHeader String token, @RequestBody Seccion seccion, BindingResult bindingResult) {
+    public ResponseEntity<String> modificar(@RequestHeader String token, @Valid @RequestBody Seccion seccion, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
         }
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
-            return Responses.FORBIDDEN;
+            return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
         Seccion dbSeccion = service.buscarPorId(seccion.getId());
         if (dbSeccion == null) {
-            return Responses.notFound("No existe una seccion con ese id");
+            return Responses.notFound(message.getMessage("error.seccion.id"));
         }
         if (service.buscarPorNombre(seccion.getNombre()) != null && !dbSeccion.getNombre().equals(seccion.getNombre())) {
-            return Responses.conflict("Ya existe una seccion con ese nombre");
+            return Responses.conflict(message.getMessage("error.seccion.nombre_repetido"));
         }
         if (service.actualizar(seccion) != null) {
-            return ResponseEntity.ok("Seccion actualizada correctamente");
+            return ResponseEntity.ok(message.getMessage("mensaje.seccion.actualizada"));
         }
-        return Responses.badRequest("No se ha podido actualizar la seccion");
+        return Responses.badRequest(message.getMessage("error.seccion.actualizar"));
     }
 
     /**
@@ -177,11 +183,11 @@ public class SeccionController {
     @PatchMapping("/modificar/imagen/{id}")
     public ResponseEntity<String> modificarImagen(@PathVariable Long id, @RequestHeader String token, MultipartFile file) throws Exception {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
-            return Responses.FORBIDDEN;
+            return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
         Seccion dbSeccion = service.buscarPorId(id);
         if (dbSeccion == null) {
-            return Responses.notFound("No existe una seccion con ese id");
+            return Responses.notFound(message.getMessage("error.seccion.id"));
         }
         if (dbSeccion.getFoto() != null) {
             File imagen = new File(dbSeccion.getFoto());
@@ -195,6 +201,6 @@ public class SeccionController {
         if (service.guardar(dbSeccion) != null) {
             return ResponseEntity.ok(path);
         }
-        return Responses.badRequest("Error al modificar la imagen");
+        return Responses.badRequest(message.getMessage("error.seccion.modificar_imagen"));
     }
 }

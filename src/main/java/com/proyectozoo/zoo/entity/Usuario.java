@@ -18,18 +18,18 @@ public class Usuario {
     @Column(name = "id")
     private Long id;
 
-    @NotBlank(message = "El nombre es obligatorio")
+    @NotBlank(message = "error.usuario.nombre")
     @Column(name = "nombre", unique = true)
-    @Size(min = 1, message = "El nombre no puede estar vacio")
+    @Size(min = 1, message = "error.usuario.nombre_vacio")
     private String nombre;
 
-    @NotBlank(message = "El correo electrónico es obligatorio")
-    @Email(message = "El correo electrónico no es válido")
+    @NotBlank(message = "error.usuario.email_vacio")
+    @Email(message = "error.usuario.email")
     @Column(name = "email", unique = true)
     private String email;
 
-    @NotBlank(message = "La contraseña es obligatoria")
-    @Size(min = 8,message = "La contraseña debe tener como minimo 8 caracteres")
+    @NotBlank(message = "error.usuario.contrasena")
+    @Size(min = 8,message = "error.usuario.longitud_contrasena")
     @Column(name = "password")
     private String password;
 

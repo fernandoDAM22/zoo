@@ -3,16 +3,26 @@ package com.proyectozoo.zoo.util;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.sql.SQLException;
+import java.util.Locale;
 import java.util.Set;
 
 @RestControllerAdvice
 public class CustomHandler {
+    private final MessageSource messageSource;
+
+    @Autowired
+    public CustomHandler(MessageSource messageSource) {
+        this.messageSource = messageSource;
+    }
     /**
      * Este metodo permite manejar las excepciones MissingRequestHeader
      * @param sqlException es la excepcion que ha ocurrido
@@ -33,10 +43,14 @@ public class CustomHandler {
         String errorMessage = "";
         if (!violations.isEmpty()) {
             StringBuilder builder = new StringBuilder();
-            violations.forEach(violation -> builder.append(" " + violation.getMessage() + "\n"));
+            Locale currentLocale = LocaleContextHolder.getLocale();
+            violations.forEach(violation -> {
+                String message = messageSource.getMessage(violation.getMessage(), null, currentLocale);
+                builder.append(" ").append(message).append("\n");
+            });
             errorMessage = builder.toString();
         } else {
-            errorMessage = "ConstraintViolationException occured.";
+            errorMessage = "ConstraintViolationException occurred.";
         }
         return new ResponseEntity<>(errorMessage, HttpStatus.BAD_REQUEST);
     }

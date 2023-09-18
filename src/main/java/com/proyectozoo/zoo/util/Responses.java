@@ -3,13 +3,17 @@ package com.proyectozoo.zoo.util;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+
 public class Responses {
     /**
-     * ResponseEntity para devolver en caso de que el token de autenticacion no sea valido
+     * Este metodo devuelve un ResponseEntity con un StatusCode 403
+     *
+     * @param mensaje es el mensaje que se anade al cuerpo del ResposeEntity
+     * @return el ResponseEntity creado
      */
-    public static ResponseEntity<String> FORBIDDEN = ResponseEntity
-            .status(HttpStatus.FORBIDDEN)
-            .body("Token de autenticacion invalido");
+    public static ResponseEntity<String> forbidden(String mensaje) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(mensaje);
+    }
 
     /**
      * Este metodo devuelve un ResponseEntity con un StatusCode 400
@@ -30,6 +34,7 @@ public class Responses {
     public static ResponseEntity<String> conflict(String mensaje) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(mensaje);
     }
+
     /**
      * Este metodo devuelve un ResponseEntity con un StatusCode 401
      *
@@ -39,6 +44,7 @@ public class Responses {
     public static ResponseEntity<String> created(String mensaje) {
         return ResponseEntity.status(HttpStatus.CREATED).body(mensaje);
     }
+
     /**
      * Este metodo devuelve un ResponseEntity con un StatusCode 404
      *
