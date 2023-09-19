@@ -3,9 +3,9 @@ package com.proyectozoo.zoo.service.impl;
 import com.proyectozoo.zoo.entity.Animal;
 import com.proyectozoo.zoo.repository.AnimalRepository;
 import com.proyectozoo.zoo.service.IAnimalService;
+import io.jsonwebtoken.ExpiredJwtException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +20,7 @@ public class AnimalServiceImpl implements IAnimalService {
 
     /**
      * Este metodo permite obtener todos los animales de la base de datos
+     *
      * @return una lista con todos los animales de la base de datos
      */
     @Override
@@ -29,6 +30,7 @@ public class AnimalServiceImpl implements IAnimalService {
 
     /**
      * Este metodo permite obtener todos los animales de una seccion de la base de datos
+     *
      * @param id es el id de la seccion
      * @return una lista con todos los animales de esa seccion
      */
@@ -39,6 +41,7 @@ public class AnimalServiceImpl implements IAnimalService {
 
     /**
      * Este metodo permite obtener un animal por su id
+     *
      * @param id es el id del animal que queremos obtener
      * @return el animal con ese id si existe, null si no existe
      */
@@ -51,6 +54,7 @@ public class AnimalServiceImpl implements IAnimalService {
 
     /**
      * Este metodo permite buscar a un animal por su nombre
+     *
      * @param nombre es el del animal que queremos obtener
      * @return el animal con ese nombre si existe o null si no existe
      */
@@ -62,6 +66,7 @@ public class AnimalServiceImpl implements IAnimalService {
 
     /**
      * Este metodo permite guardar a un animal en la base de datos
+     *
      * @param animal es el animal que queremos guardar en la base de datos
      * @return el animal guardado en la base de datos
      */
@@ -72,13 +77,14 @@ public class AnimalServiceImpl implements IAnimalService {
 
     /**
      * Este meotodo permite borrar a un animal de la base de datos
+     *
      * @param id es el id del animal que queremos borrar
      * @return el animal borrado de la base de datos
      */
     @Override
     public Animal borrar(Long id) {
         Optional<Animal> animal = animalRepository.findById(id);
-        if(animal.isEmpty()){
+        if (animal.isEmpty()) {
             return null;
         }
         Animal deleteAnimal = animal.get();
@@ -88,13 +94,14 @@ public class AnimalServiceImpl implements IAnimalService {
 
     /**
      * Este metodo permite actualizar un animal de la base de datos a excepcion de su foto
+     *
      * @param newAnimal es el animal con los nuevos datos
      * @return el animal modificiado con los nuevos datos asignados
      */
     @Override
     public Animal actualizar(Animal newAnimal) {
         Optional<Animal> optionalAnimal = animalRepository.findById(newAnimal.getId());
-        if(optionalAnimal.isEmpty()){
+        if (optionalAnimal.isEmpty()) {
             return null;
         }
         Animal animal = optionalAnimal.get();
@@ -109,15 +116,17 @@ public class AnimalServiceImpl implements IAnimalService {
 
     /**
      * Este metodo permite obtener el animal con mas comentarios en la ultima semana
+     *
      * @return el animal con mas comentarios en la ultima semana
      */
     @Override
     public Animal animalMasVotadoSemana() {
-       return animalRepository.animalMasPopularSemana();
+        return animalRepository.animalMasPopularSemana();
     }
 
     /**
      * Este metodo permite obtener el animal mas comentarios en el ultimo mes
+     *
      * @return el animal con mas comentarios en el ultimo mes
      */
     @Override

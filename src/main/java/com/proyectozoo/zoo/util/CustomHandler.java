@@ -60,5 +60,4 @@ public class CustomHandler {
     public ResponseEntity<String>  handleExpiredJwtException(ExpiredJwtException expiredJwtException){
         return Responses.badRequest(messageComponent.getMessage("error.usuario.token_expirado"));
     }
-
 }
