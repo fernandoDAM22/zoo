@@ -9,8 +9,8 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 @EnableWebMvc
 public class ZooApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(ZooApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(ZooApplication.class, args);
+    }
 
 }

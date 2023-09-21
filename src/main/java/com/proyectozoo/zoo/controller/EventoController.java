@@ -7,12 +7,14 @@ import com.proyectozoo.zoo.entity.Evento;
 import com.proyectozoo.zoo.service.IEventoService;
 import com.proyectozoo.zoo.service.IUploadFileService;
 import com.proyectozoo.zoo.util.Responses;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,8 +23,9 @@ import java.io.File;
 import java.util.List;
 
 
-@Controller
+@RestController
 @RequestMapping("api/eventos")
+@Tag(name = "Animales", description = "Operaciones relacionadas con los eventos")
 public class EventoController {
     /**
      * Instancia del servicio
@@ -62,7 +65,10 @@ public class EventoController {
      * @return una lista con todos los eventos, o un error
      */
     @GetMapping("/")
-    public ResponseEntity<List<Evento>> obtener(@RequestHeader("token") String token) {
+    @Operation(summary = "Obtener eventos", description = "Obtiene una lista con todos los eventos de la base de datos")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<List<Evento>> obtener(
+            @Parameter(description = "token de autenticacion del usuario") @RequestHeader("token") String token) {
         if (!jwtUtil.validarToken(token)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", message.getMessage("error.usuario.token")).body(null);
         }
@@ -77,7 +83,11 @@ public class EventoController {
      * @return una lista con todos los eventos de la seccion
      */
     @GetMapping("/seccion/{id}")
-    public ResponseEntity<List<Evento>> obtenerEventosPorSeccion(@PathVariable Long id, @RequestHeader("token") String token) {
+    @Operation(summary = "Obtener eventos por seccion", description = "Obtiene una lista con todos los eventos de una seccion")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<List<Evento>> obtenerEventosPorSeccion(
+            @Parameter(description = "Id de la seccion de la que queremos obtener los eventos") @PathVariable Long id,
+            @Parameter(description = "token de autenticacion del usuario") @RequestHeader("token") String token) {
         if (!jwtUtil.validarToken(token)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", message.getMessage("error.usuario.token")).body(null);
         }
@@ -92,7 +102,11 @@ public class EventoController {
      * @return un ResponseEntity con el evento con el id indicado o un error
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Evento> obtenerEvento(@PathVariable Long id, @RequestHeader("token") String token) {
+    @Operation(summary = "Obtener un evento", description = "Obtiene un evento a partir de su id")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<Evento> obtenerEvento(
+            @Parameter(description = "Id del evento que queremos obtener") @PathVariable Long id,
+            @Parameter(description = "token de autenticacion del usuario") @RequestHeader("token") String token) {
         if (!jwtUtil.validarToken(token)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", message.getMessage("error.usuario.token")).body(null);
         }
@@ -112,7 +126,10 @@ public class EventoController {
      * @return un ResponseEntity indicando que se ha insertado correctamente el evento o que ha ocurrido algun error
      */
     @PostMapping("/")
-    public ResponseEntity<String> insertar(@RequestHeader("token") String token, @Valid @RequestBody Evento evento, BindingResult bindingResult) {
+    @Operation(summary = "Insertar evento", description = "Inserta un evento en la base de datos")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseEntity<String> insertar(@Parameter(description = "token de autenticacion del usuario") @RequestHeader("token") String token,
+                                           @Valid @RequestBody Evento evento, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
         }
@@ -138,7 +155,12 @@ public class EventoController {
      * @return un ResponseEntity con la ruta de la imagen asignada al evento o un error
      */
     @PostMapping("/imagen/{id}")
-    public ResponseEntity<String> subir(@PathVariable Long id, @RequestHeader("token") String token, @RequestParam("file") MultipartFile file) {
+    @Operation(summary = "Subir imagen", description = "Sube una imagen al servidor y se la asigna a un evento")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<String> subir(
+            @Parameter(description = "Id del evento al que le queremos asignar la imagen") @PathVariable Long id,
+            @Parameter(description = "token de autenticacion del usuario") @RequestHeader("token") String token,
+            @Parameter(description = "Imagen que le queremos asignar al evento") @RequestParam("file") MultipartFile file) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
             return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
@@ -165,7 +187,11 @@ public class EventoController {
      * @return un ResponseEntity indicando que se ha borrado correctamente el evento o que ha ocurrido algun error
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> borrar(@RequestHeader("token") String token, @PathVariable Long id) {
+    @Operation(summary = "Borrar evento", description = "Borra un evento de la base de datos")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<String> borrar(
+            @Parameter(description = "token de autenticacion del usuario") @RequestHeader("token") String token,
+            @Parameter(description = "Id del evento") @PathVariable Long id) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
             return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
@@ -190,7 +216,11 @@ public class EventoController {
      * @return un ResponseEntity indicando que se ha modificado el evento correctamente o que ha ocurrido algun error
      */
     @PutMapping("/")
-    public ResponseEntity<String> modificarEvento(@RequestHeader("token") String token, @Valid @RequestBody Evento evento, BindingResult bindingResult) {
+    @Operation(summary = "Modificar evento", description = "Modifica un evento a excepcion de su foto")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<String> modificarEvento(
+            @Parameter(description = "token de autenticacion del usuario") @RequestHeader("token") String token,
+            @Valid @RequestBody Evento evento, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
         }
@@ -219,7 +249,11 @@ public class EventoController {
      * @return un ResponseEntity indicando que se ha modificado correctamente la imagen o que ha ocurrido algun error
      */
     @PatchMapping("/modificar/imagen/{id}")
-    public ResponseEntity<String> modificarImagen(@PathVariable Long id, @RequestHeader("token") String token, @RequestParam("file") MultipartFile file) {
+    @Operation(summary = "Modificar imagen", description = "Modifica la imagen de un evento")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<String> modificarImagen(
+            @Parameter(description = "Id del animal al que le queremos modificar la imagen") @PathVariable Long id, @RequestHeader("token") String token,
+            @RequestParam("file") MultipartFile file) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
             return Responses.forbidden(message.getMessage("error.usuario.token"));
         }

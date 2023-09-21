@@ -7,13 +7,15 @@ import com.proyectozoo.zoo.entity.Seccion;
 import com.proyectozoo.zoo.service.ISeccionService;
 import com.proyectozoo.zoo.service.IUploadFileService;
 import com.proyectozoo.zoo.util.Responses;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,9 +23,10 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.util.List;
 
-@Controller
+@RestController
 @RequestMapping("api/secciones")
-public class    SeccionController {
+@Tag(name = "Secciones", description = "Operaciones relacionadas con las secciones")
+public class SeccionController {
     /**
      * Instancia del servicio
      */
@@ -54,6 +57,7 @@ public class    SeccionController {
      */
     @Autowired
     private MessageComponent message;
+
     /**
      * Este metodo permite dar de alta una seccion
      *
@@ -63,7 +67,11 @@ public class    SeccionController {
      * @return un responseEntity indicando que se ha dado de alta la seccion o que ha ocurrido algun error
      */
     @PostMapping("/alta")
-    public ResponseEntity<String> alta(@RequestHeader(name = "token") String token, @Valid @RequestBody Seccion seccion, BindingResult bindingResult) {
+    @Operation(summary = "Inserta una seccion", description = "Inserta una seccion en la base de datos")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseEntity<String> alta(
+            @Parameter(description = "token de autenticacion del usuario") @RequestHeader(name = "token") String token,
+            @Valid @RequestBody Seccion seccion, BindingResult bindingResult) {
         try {
             if (bindingResult.hasErrors()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
@@ -91,7 +99,12 @@ public class    SeccionController {
      * que ha ocurrido algun error
      */
     @PostMapping("/imagen/{id}")
-    public ResponseEntity<String> subirImagen(@PathVariable Long id, @RequestHeader("token") String token, @RequestParam("file") MultipartFile file) {
+    @Operation(summary = "Subir una imagen", description = "Sube una imagen al servidor y se la asigna a una seccion")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<String> subirImagen(
+            @Parameter(description = "id de la seccion a la que le queremos asignar la imagen") @PathVariable Long id,
+            @Parameter(description = "token de autenticacion del usuario") @RequestHeader("token") String token,
+            @Parameter(description = "Imagen que le queremos asignar a una seccion") @RequestParam("file") MultipartFile file) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
             return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
@@ -113,6 +126,8 @@ public class    SeccionController {
      * @return una lista con los nombres de las secciones
      */
     @GetMapping("/nombres")
+    @Operation(summary = "Obtener nombres", description = "Obtiene una lista con todos los nombres de las secciones de la base de datos")
+    @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<List<String>> obtenerNombres() {
         return ResponseEntity.ok(service.obtenerNombres());
     }
@@ -123,12 +138,16 @@ public class    SeccionController {
      * @return una lista con todas las secciones de la base de datos
      */
     @GetMapping("/")
+    @Operation(summary = "Obtener secciones", description = "Obtiene una lista con todas las secciones de la base de datos")
+    @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<List<Seccion>> obtenerSecciones() {
         return ResponseEntity.ok(service.obtenerSecciones());
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> borrarSeccion(@PathVariable Long id, @RequestHeader("token") String token) {
+    public ResponseEntity<String> borrarSeccion(
+            @Parameter(description = "Id de la seccion que queremos borrar") @PathVariable Long id,
+            @Parameter(description = "token de autenticacion del usuario") @RequestHeader("token") String token) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
             return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
@@ -151,7 +170,11 @@ public class    SeccionController {
      * @return un ResponseEntity indicando que se ha modificado correctamente la seccion o que ha ocurrido algun error
      */
     @PutMapping("/modificar")
-    public ResponseEntity<String> modificar(@RequestHeader String token, @Valid @RequestBody Seccion seccion, BindingResult bindingResult) {
+    @Operation(summary = "Modificar seccion", description = "Modifica una seccion a excepcion de su foto")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<String> modificar(
+            @Parameter(description = "token de autenticacion del usuario") @RequestHeader String token,
+            @Valid @RequestBody Seccion seccion, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
         }
@@ -178,10 +201,14 @@ public class    SeccionController {
      * @param token es el token de autenticacion del usuario que esta intentando modificar la imagen
      * @param file  es la nueva imagen que se le va a asignar a la seccion
      * @return un ResponseEntity indicando que se ha modificado correctamente la seccion o que ha ocurrido algun error
-     * @throws Exception
      */
     @PatchMapping("/modificar/imagen/{id}")
-    public ResponseEntity<String> modificarImagen(@PathVariable Long id, @RequestHeader String token, MultipartFile file) throws Exception {
+    @Operation(summary = "Modificar imagen", description = "Modifica la imagen de una seccion")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<String> modificarImagen(
+            @Parameter(description = "Id de la seccion a la que le queremos modificar la imagen") @PathVariable Long id,
+            @Parameter(description = "token de autenticacion del usuario") @RequestHeader String token,
+            @Parameter(description = "Imagen que le queremos asignar a la seccion") MultipartFile file) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
             return Responses.forbidden(message.getMessage("error.usuario.token"));
         }

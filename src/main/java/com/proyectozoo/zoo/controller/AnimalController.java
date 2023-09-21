@@ -7,13 +7,14 @@ import com.proyectozoo.zoo.entity.Animal;
 import com.proyectozoo.zoo.service.IAnimalService;
 import com.proyectozoo.zoo.service.IUploadFileService;
 import com.proyectozoo.zoo.util.Responses;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.aspectj.bridge.MessageUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,8 +22,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.util.List;
 
-@Controller
+@RestController
 @RequestMapping("api/animales")
+@Tag(name = "Animales", description = "Operaciones relacionadas con los animales")
 public class AnimalController {
     /**
      * Instancia del servicio
@@ -63,7 +65,9 @@ public class AnimalController {
      * @return una lista con todos los animales de la base de datos
      */
     @GetMapping("/")
-    public ResponseEntity<List<Animal>> obtenerAnimales(@RequestHeader String token) {
+    @ResponseStatus(HttpStatus.OK)
+    @Operation(summary = "Obtener la lista de animales", description = "Obtiene una lista con todos los animales de la base de datos")
+    public ResponseEntity<List<Animal>> obtenerAnimales(@Parameter(description = "token de autenticacion del usuario") @RequestHeader String token) {
         if (!jwtUtil.validarToken(token)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", message.getMessage("error.usuario.token_expirado")).body(null);
         }
@@ -78,7 +82,11 @@ public class AnimalController {
      * @return una lista con los animales de esa seccion
      */
     @GetMapping("/seccion/{id}")
-    public ResponseEntity<List<Animal>> obtenerAnimalesPorSeccion(@RequestHeader("token") String token, @PathVariable Long id) {
+    @Operation(summary = "Obtener la lista de animales de una seccion", description = "Obtiene una lista con todos los animales de la seccion indicada")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<List<Animal>> obtenerAnimalesPorSeccion(
+            @Parameter(description = "token de autenticacion del usuario") @RequestHeader("token") String token,
+            @Parameter(description = "Id de la categoria de la que queremos obtener los animales") @PathVariable Long id) {
         if (!jwtUtil.validarToken(token)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", message.getMessage("error.usuario.token")).body(null);
         }
@@ -94,7 +102,11 @@ public class AnimalController {
      * @return un ResponseEntity indicando que se ha dado de alta correctamente el animal, o que algo fallo
      */
     @PostMapping("/alta")
-    public ResponseEntity<String> insertar(@RequestHeader("token") String token, @Valid @RequestBody Animal animal, BindingResult bindingResult) {
+    @Operation(summary = "Insertar un animal", description = "Inserta un animal en la base de datos")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseEntity<String> insertar(
+            @Parameter(description = "token de autenticacion del usuario") @RequestHeader("token") String token,
+            @Valid @RequestBody() Animal animal, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
         }
@@ -121,7 +133,12 @@ public class AnimalController {
      * que ha ocurrido algun error
      */
     @PostMapping("/imagen/{id}")
-    public ResponseEntity<String> subir(@PathVariable Long id, @RequestHeader("token") String token, @RequestParam("file") MultipartFile file) {
+    @Operation(summary = "Asignar imagen a un animal", description = "Sube una imagen al servidor y se la asigna a un animal")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<String> subir(
+            @Parameter(description = "Id del animal al que le queremos asignar la imagen") @PathVariable Long id,
+            @Parameter(description = "token de autenticacion del usuario") @RequestHeader("token") String token,
+            @Parameter(description = "Imagen que le queremos asignar al usuario") @RequestParam("file") MultipartFile file) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
             return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
@@ -148,7 +165,11 @@ public class AnimalController {
      * @return un ResponseEntity indicando que se ha borrado correctamente el animal, o que ha ocurrido algun error
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> borrarAnimal(@PathVariable Long id, @RequestHeader("token") String token) {
+    @Operation(summary = "Borra un animal", description = "Borra un animal de la base de datos")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<String> borrarAnimal(
+            @Parameter(description = "Id del animal que queremos borrar") @PathVariable Long id,
+            @Parameter(description = "token de autenticacion del usuario") @RequestHeader("token") String token) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
             return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
@@ -174,7 +195,11 @@ public class AnimalController {
      * @return un ResponseEntity indicando que se ha modificado correctamente el animal o que ha ocurrido algun error
      */
     @PutMapping("/")
-    public ResponseEntity<String> modificarAnimal(@RequestHeader("token") String token, @Valid @RequestBody Animal animal, BindingResult bindingResult) {
+    @Operation(summary = "Borra un animal", description = "Modifica un animal de la base de datos a excepcion de su foto")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<String> modificarAnimal(
+            @Parameter(description = "token de autenticacion del usuario") @RequestHeader("token") String token,
+            @Valid @RequestBody Animal animal, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorUtils.getErrorMessages(bindingResult).toString());
         }
@@ -206,7 +231,12 @@ public class AnimalController {
      * @return la ruta de la imagen en el servidor
      */
     @PatchMapping("/modificar/imagen/{id}")
-    public ResponseEntity<String> modificarImagen(@PathVariable Long id, @RequestHeader("token") String token, @RequestParam("file") MultipartFile file) {
+    @Operation(summary = "Modifica la foto de un animal", description = "Modifica la foto de un animal de la base de datos")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<String> modificarImagen(
+            @Parameter(description = "id del animal al que le queremos modificar la imagen") @PathVariable Long id,
+            @Parameter(description = "token de autenticacion del usuario") @RequestHeader("token") String token,
+            @RequestParam("file") MultipartFile file) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
             return Responses.forbidden(message.getMessage("error.usuario.token"));
         }
@@ -236,7 +266,9 @@ public class AnimalController {
      * @return el animal con mas comentarios en la ultima semana
      */
     @GetMapping("/popular/semana")
-    public ResponseEntity<Animal> animalMasPopularSemana(@RequestHeader("token") String token) {
+    @Operation(summary = "Obtiene el animal mas popupar de la semana", description = "Obtiene en animal con mas comentarios en la ultima semana")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<Animal> animalMasPopularSemana(@Parameter(description = "token de autenticacion del usuario") @RequestHeader("token") String token) {
         if (!jwtUtil.validarToken(token)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", message.getMessage("error.usuario.token")).body(null);
         }
@@ -250,9 +282,11 @@ public class AnimalController {
      * @return el animal con mas comentarios en el ultimo mes
      */
     @GetMapping("/popular/mes")
-    public ResponseEntity<Animal> animalMasPopularMes(@RequestHeader("token") String token) {
+    @Operation(summary = "Obtiene el animal mas popupar del mes", description = "Obtiene en animal con mas comentarios en el ultimo mes")
+    @ResponseStatus(HttpStatus.OK)
+    public ResponseEntity<Animal> animalMasPopularMes(@Parameter(description = "token de autenticacion del usuario") @RequestHeader("token") String token) {
         if (!jwtUtil.validarToken(token)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error",message.getMessage("error.usuario.token")).body(null);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", message.getMessage("error.usuario.token")).body(null);
         }
         return ResponseEntity.ok(service.animalMasVotadoMes());
     }

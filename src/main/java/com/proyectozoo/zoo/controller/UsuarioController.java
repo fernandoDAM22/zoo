@@ -9,13 +9,15 @@ import com.proyectozoo.zoo.service.IUsuarioService;
 import com.proyectozoo.zoo.util.Responses;
 import de.mkammerer.argon2.Argon2;
 import de.mkammerer.argon2.Argon2Factory;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,8 +27,9 @@ import java.util.List;
 import java.util.Objects;
 
 
-@Controller
+@RestController
 @RequestMapping("api/usuarios")
+@Tag(name = "Usuarios", description = "Operaciones relacionadas con los usuarios")
 public class UsuarioController {
     /**
      * Instancia del servicio
@@ -67,6 +70,8 @@ public class UsuarioController {
      * @return una lista con todos los usuarios de la base de datos
      */
     @GetMapping("/")
+    @Operation(summary = "Obtener usuarios", description = "Obtiene todos los usuarios de la base de datos")
+    @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<List<Usuario>> obtenerUsuarios(@RequestHeader("token") String token) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
             ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", message.getMessage("error.usuario.token")).body(null);
@@ -82,6 +87,8 @@ public class UsuarioController {
      * @return un ResponseEntity con el usuario en caso de que exista, o un error en caso de que ocurra
      */
     @GetMapping("/{id}")
+    @Operation(summary = "Obtener usuario", description = "Obtiene un usuario de la base de datos")
+    @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<Usuario> obtenerUsuario(@RequestHeader String token, @PathVariable Long id) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
             ResponseEntity.status(HttpStatus.FORBIDDEN).header("Error", message.getMessage("error.usuario.token")).body(null);
@@ -99,10 +106,11 @@ public class UsuarioController {
      *
      * @param usuario       es el usuario con los datos que vamos a registrar
      * @param bindingResult es el objeto que nos permite capturar los errores de validacion
-     * @param bindingResult objeto para poder realizar la validacion de los campos
      * @return un ResponseEntity indicando si se ha registrado correctamente el usuario o no
      */
     @PostMapping("/registro")
+    @Operation(summary = "Registrar un usuario", description = "Registra un usuario en la base de datos")
+    @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<String> registrar(@Valid @RequestBody Usuario usuario, BindingResult bindingResult) {
         try {
             if (bindingResult.hasErrors()) {
@@ -135,6 +143,8 @@ public class UsuarioController {
      * @return un mensaje indicando que se ha subido la imagen correctamente o no
      */
     @PostMapping("/imagen/{id}")
+    @Operation(summary = "Subir imagen", description = "Sube una imagen al servidor y se la asigna a un usuario")
+    @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<String> subir(@PathVariable Long id, @RequestHeader("token") String token, @RequestParam("file") MultipartFile file) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
             return Responses.forbidden(message.getMessage("error.usuario.token"));
@@ -155,6 +165,8 @@ public class UsuarioController {
      * @return un ResponseEntity indicando que se ha logueado correctamente el usuario, o que ha fallado el proceso
      */
     @PostMapping("/login")
+    @Operation(summary = "Login", description = "Permite a un usuario loguerse y obtener su token")
+    @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<String> login(@RequestBody Usuario usuario) {
         Usuario authUser = usuarioService.buscarPorEmail(usuario.getEmail());
         System.out.println(authUser);
@@ -178,6 +190,8 @@ public class UsuarioController {
      * @return un ReponseEntity indicando que se ha borrado correctamente el usuario o que ha ocurrido algun error
      */
     @DeleteMapping("/{id}")
+    @Operation(summary = "Borrar usuario", description = "Borra un usuario de la base de datos")
+    @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<String> borrar(@RequestHeader("token") String token, @PathVariable Long id) {
         if (!jwtUtil.validarToken(token) || !jwtUtil.validarAdmin(token)) {
             return Responses.forbidden(message.getMessage("error.usuario.token"));
@@ -203,6 +217,8 @@ public class UsuarioController {
      * @return un ResponseEntity indicando que se ha modificado correctamente el usuario o de que ha ocurrido algun error
      */
     @PutMapping("/")
+    @Operation(summary = "Actualizar usuario", description = "Actualiza un usuario de la base de datos a excepcion de su foto")
+    @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<String> actualizar(@RequestHeader String token, @Valid @RequestBody Usuario usuario, BindingResult bindingResult) {
         try {
             if (bindingResult.hasErrors()) {
@@ -235,6 +251,8 @@ public class UsuarioController {
      * @return un ResponseEntity indicando que se ha modificado correctamente el nombre del usuario o que ha ocurrido algun error
      */
     @PatchMapping("/actualizar/nombre/{id}")
+    @Operation(summary = "Actualizar nombre", description = "Actualiza el nombre de un usuario")
+    @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<String> actualizarNombre(@RequestHeader("token") String token, @PathVariable Long id, @Valid @RequestBody String nombre, BindingResult bindingResult) {
         try {
             if (bindingResult.hasErrors()) {
@@ -268,6 +286,8 @@ public class UsuarioController {
      * @return un ResponseEntity indicando que se ha modificado correctamente el email del usuario o que ha ocurrido algun error
      */
     @PatchMapping("/actualizar/email/{id}")
+    @Operation(summary = "Actualizar email", description = "Actualiza el email de un usuario")
+    @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<?> actualizarEmail(@RequestHeader("token") String token, @PathVariable Long id, @Valid @RequestBody String email, BindingResult bindingResult) {
         try {
             if (bindingResult.hasErrors()) {
@@ -294,35 +314,37 @@ public class UsuarioController {
     /**
      * Este metodo permite actualizar la contrasena de un usuario
      *
-     * @param token         es el token de autenticacion del usuario logueado
-     * @param id            es el id del usuario al que le queremos cambiar la contrasena
-     * @param password      es el nueva contrasena del usuario
+     * @param token    es el token de autenticacion del usuario logueado
+     * @param id       es el id del usuario al que le queremos cambiar la contrasena
+     * @param password es el nueva contrasena del usuario
      * @return un ResponseEntity indicando que se ha modificaco correctamente la contrasena del usaurio
      */
     @PatchMapping("/actualizar/password/{id}")
+    @Operation(summary = "Actualizar contrasena", description = "Actualiza la contrasena de un usuario")
+    @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<String> actualizarPassword(@RequestHeader("token") String token, @PathVariable Long id, @Valid @RequestBody String password) {
-            if (!jwtUtil.validarToken(token)) {
-                return Responses.forbidden(message.getMessage("error.usuario.token"));
-            }
-            Long userId = Long.parseLong(jwtUtil.getKey(token));
-            Usuario dbUser = usuarioService.buscarPorId(id);
-            if (dbUser == null || !Objects.equals(dbUser.getId(), userId)) {
-                return Responses.notFound(message.getMessage("error.usuario.id"));
-            }
-            /*
-             * Como la contraseña se cifra, aunque se introduzca una contrasena con menos de 8
-             * caracteres al aplicar el proceso de cifrado esta superara los 8 caracteres, por lo que
-             * la validacion automatica de Spring no funcionara y tenemos que realizarla nosotros manualmente
-             */
-            if (password.length() < 8) {
-                return ResponseEntity.badRequest().body(message.getMessage("error.usuario.longitud_contrasena"));
-            }
-            Argon2 argon2 = Argon2Factory.create(Argon2Factory.Argon2Types.ARGON2id);
-            String hash = argon2.hash(1, 1024, 1, password);
-            dbUser.setPassword(hash);
-            if (usuarioService.guardar(dbUser) != null) {
-                return ResponseEntity.ok(message.getMessage("mensaje.usuario.contrasena_actualizada"));
-            }
+        if (!jwtUtil.validarToken(token)) {
+            return Responses.forbidden(message.getMessage("error.usuario.token"));
+        }
+        Long userId = Long.parseLong(jwtUtil.getKey(token));
+        Usuario dbUser = usuarioService.buscarPorId(id);
+        if (dbUser == null || !Objects.equals(dbUser.getId(), userId)) {
+            return Responses.notFound(message.getMessage("error.usuario.id"));
+        }
+        /*
+         * Como la contraseña se cifra, aunque se introduzca una contrasena con menos de 8
+         * caracteres al aplicar el proceso de cifrado esta superara los 8 caracteres, por lo que
+         * la validacion automatica de Spring no funcionara y tenemos que realizarla nosotros manualmente
+         */
+        if (password.length() < 8) {
+            return ResponseEntity.badRequest().body(message.getMessage("error.usuario.longitud_contrasena"));
+        }
+        Argon2 argon2 = Argon2Factory.create(Argon2Factory.Argon2Types.ARGON2id);
+        String hash = argon2.hash(1, 1024, 1, password);
+        dbUser.setPassword(hash);
+        if (usuarioService.guardar(dbUser) != null) {
+            return ResponseEntity.ok(message.getMessage("mensaje.usuario.contrasena_actualizada"));
+        }
         return Responses.badRequest(message.getMessage("error.usuario.modificar_contrasena"));
     }
 
@@ -335,6 +357,8 @@ public class UsuarioController {
      * @return un ResponseEntity de String indicado que se ha modificado la foto o de que ha ocurrido algun error
      */
     @PatchMapping("/actualizar/imagen/{id}")
+    @Operation(summary = "Actualizar imagen", description = "Actualiza la imagen de un usuario")
+    @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<String> actualizarFoto(@RequestHeader("token") String token, @PathVariable Long id, MultipartFile file) {
         if (!jwtUtil.validarToken(token)) {
             return Responses.forbidden(message.getMessage("error.usuario.token"));
