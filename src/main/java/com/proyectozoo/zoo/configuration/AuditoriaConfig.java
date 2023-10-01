@@ -18,6 +18,6 @@ public class AuditoriaConfig {
      */
     @Bean
     public DateTimeProvider dateTimeProvider() {
-        return () -> Optional.of(LocalDate.now()); //
+        return () -> Optional.of(LocalDate.now());
     }
 }
